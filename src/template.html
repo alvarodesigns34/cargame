@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#183d3d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Costa Drive · Bahía Azul</title>
+  <style>/* STYLES */</style>
+</head>
+<body>
+  <div id="scene" aria-label="Escenario de conducción 3D"></div>
+  <div class="vignette"></div>
+  <div id="loading"><span class="loader"></span><b>Preparando la costa…</b></div>
+  <div id="fatal" hidden><h2>No se pudo iniciar el juego</h2><p id="fatal-text"></p><button onclick="location.reload()">Volver a intentar</button></div>
+  <main id="welcome" hidden>
+    <div class="welcome-brand"><span class="brand-mark">C<span>↗</span></span><b>COSTA<span>DRIVE</span></b><small>BAHÍA AZUL · 01</small></div>
+    <section class="welcome-copy">
+      <div class="eyebrow"><i></i> LA CARRETERA ES TUYA</div>
+      <h1>Sin prisa.<br><em>Sin límites.</em></h1>
+      <p>Una costa por descubrir. Un deportivo a tu ritmo.<br>Encuentra tu trazada, o simplemente piérdete.</p>
+      <button id="start" class="primary">SALIR A CONDUCIR <span>↗</span></button>
+      <div class="welcome-meta"><span>3D · MUNDO ABIERTO</span><span>HECHO PARA TUS DEDOS</span></div>
+    </section>
+    <div class="welcome-bottom"><span><b>01 /</b> EXPLORA · CORRE · DERRAPA</span><span>HORIZONTAL SE CONDUCE MEJOR</span></div>
+    <div class="vehicle-tag"><i></i><b>AZUR GT</b><span>GRAN TURISMO · TRACCIÓN TRASERA</span></div>
+  </main>
+  <div id="hud" hidden>
+    <header class="topbar">
+      <div class="game-brand"><span class="brand-mark">C<span>↗</span></span><div><b>COSTA<span>DRIVE</span></b><small id="location">BAHÍA AZUL</small></div></div>
+      <div class="top-actions">
+        <button id="quality" class="icon-button" aria-label="Cambiar calidad gráfica" title="Calidad gráfica">AUTO</button>
+        <button id="sound" class="icon-button" aria-label="Activar o desactivar sonido" title="Sonido">♪</button>
+        <button id="camera" class="icon-button" aria-label="Cambiar cámara" title="Cambiar cámara (C)"><svg viewBox="0 0 24 24"><path d="M3 7h5l2-3h4l2 3h5v13H3z"/><circle cx="12" cy="13" r="4"/></svg></button>
+        <button id="reset" class="icon-button" aria-label="Recuperar coche en la carretera" title="Recuperar coche (R)"><svg viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 1 8M4 3v7h7"/></svg></button>
+        <button id="pause" class="icon-button" aria-label="Pausar juego" title="Pausa (Esc)"><svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg></button>
+      </div>
+    </header>
+    <button id="challenge-open" class="objective glass" aria-label="Elegir desafío">
+      <span class="objective-icon">↗</span><span><small id="challenge-label">A TU RITMO</small><b id="challenge-title">Explora Bahía Azul</b><em id="challenge-detail">Toca aquí para elegir un desafío</em></span><span class="chevron">›</span>
+    </button>
+    <aside class="minimap glass"><div><span>BAHÍA AZUL</span><b>N ↑</b></div><canvas id="map" width="320" height="320" aria-label="Mapa del mundo y próximo checkpoint"></canvas><small id="map-caption">CIUDAD · COSTA · MIRADOR</small></aside>
+    <div id="checkpoint-guide" hidden><span id="checkpoint-arrow">↑</span><small id="checkpoint-distance"></small></div>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <div id="drift" hidden><small>DERRAPE</small><b id="drift-points">+0</b><span id="drift-multiplier">×1</span></div>
+    <div id="first-hint"><b>TU PRIMERA VUELTA</b> Mantén GAS + una flecha para conducir.<br>Mantén FRENO cuando te pares para dar marcha atrás.</div>
+    <div class="drive-controls" id="drive-controls">
+      <div class="steering"><button class="drive-button steer" data-drive="left" aria-label="Girar a la izquierda"><svg viewBox="0 0 32 32"><path d="m20 7-9 9 9 9"/></svg></button><button class="drive-button steer" data-drive="right" aria-label="Girar a la derecha"><svg viewBox="0 0 32 32"><path d="m12 7 9 9-9 9"/></svg></button><span>DIRECCIÓN</span></div>
+      <div class="speedometer"><div class="speed-row"><span id="gear">N</span><b id="speed">0</b><small>KM/H</small></div><div class="power-track"><i id="power"></i></div><div class="speed-meta"><span id="surface">ASFALTO</span><span id="total-score">0 PTS</span></div></div>
+      <div class="pedals"><button class="drive-button handbrake" data-drive="handbrake" aria-label="Freno de mano"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M4 3a12 12 0 0 0 0 18M20 3a12 12 0 0 1 0 18M10 16V8h3a2 2 0 0 1 0 4h-3"/></svg> MANO</button><button class="drive-button brake" data-drive="brake" aria-label="Frenar y, manteniendo pulsado al parar, dar marcha atrás"><svg viewBox="0 0 32 32"><path d="M8 8v16M16 8v16M24 8v16"/></svg><b>FRENO</b><small>mantén para R</small></button><button class="drive-button throttle" data-drive="throttle" aria-label="Acelerar"><svg viewBox="0 0 32 32"><path d="M9 25V10M16 25V7M23 25V4"/></svg><b>GAS</b></button></div>
+    </div>
+    <div id="portrait-hint">Gira el iPad para ver más carretera ↻</div>
+  </div>
+  <div id="panel" class="overlay" hidden>
+    <section class="panel glass">
+      <div class="panel-top"><span class="eyebrow">TU PRÓXIMA TRAYECTORIA</span><button id="panel-close" class="icon-button" aria-label="Cerrar menú">×</button></div>
+      <h2 id="panel-title">Elige tu ritmo.</h2>
+      <p class="panel-description">El mundo está abierto. Tú eliges cómo recorrerlo.</p>
+      <div class="mode-grid">
+        <button data-mode="free"><small>01 / SIN RELOJ</small><b>Conducción libre <span>↗</span></b><p>Explora la ciudad, la costa y el mirador.</p></button>
+        <button data-mode="circuit"><small>02 / CONTRARRELOJ</small><b>Vuelta a la costa <span>↗</span></b><p>12 checkpoints. 150 segundos. Encuentra la trazada.</p><em id="best-circuit">Sin récord todavía</em></button>
+        <button data-mode="speed"><small>03 / ACELERACIÓN</small><b>A fondo <span>↗</span></b><p>Alcanza 120 km/h en 25 segundos, por la avenida costera.</p><em id="best-speed">Sin récord todavía</em></button>
+        <button data-mode="drift"><small>04 / CONTROL</small><b>El arte del derrape <span>↗</span></b><p>Consigue 1.000 puntos en 60 segundos en la explanada.</p><em id="best-drift">Sin récord todavía</em></button>
+      </div>
+      <footer class="panel-footer"><span>Teclado: WASD / flechas · Espacio: mano · C: cámara · R: recuperar</span><button id="resume">VOLVER A LA CARRETERA →</button></footer>
+    </section>
+  </div>
+  <noscript>Activa JavaScript para jugar a Costa Drive.</noscript>
+  <script>/* GAME */</script>
+</body>
+</html>

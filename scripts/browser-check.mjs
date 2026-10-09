@@ -1,0 +1,78 @@
+import { chromium } from 'playwright';
+import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+await mkdir('test-results',{recursive:true});
+const browser=await chromium.launch({headless:true,args:['--no-sandbox','--enable-unsafe-swiftshader']});
+const context=await browser.newContext({viewport:{width:1194,height:834},isMobile:true,hasTouch:true,deviceScaleFactor:1,userAgent:'Mozilla/5.0 (iPad; CPU OS 18_4 like Mac OS X) AppleWebKit/605.1.15 Version/18.4 Mobile/15E148 Safari/604.1'});
+const page=await context.newPage(),errors=[],network=[];
+page.on('pageerror',error=>errors.push(error.message));
+page.on('request',request=>{if(/^https?:/.test(request.url()))network.push(request.url());});
+const fileURL='file://'+resolve('index.html')+'?debug=1';
+const reports=[];
+try {
+  await page.goto(fileURL);await page.waitForSelector('#welcome:not([hidden])');
+  assert.equal(await page.locator('#fatal').isVisible(),false);
+  assert.equal(await page.evaluate(()=>__costa.world.surfaceAt(__costa.vehicle.x,__costa.vehicle.z)),'asphalt');
+  await page.screenshot({path:'test-results/welcome.png'});
+  await page.locator('#start').tap();
+  assert.equal(await page.locator('#hud').isVisible(),true);
+  const cdp=await context.newCDPSession(page);
+  const point=async selector=>{const b=await page.locator(selector).boundingBox();return{x:b.x+b.width/2,y:b.y+b.height/2,radiusX:12,radiusY:12,force:1};};
+  const gas={...await point('[data-drive="throttle"]'),id:1},right={...await point('[data-drive="right"]'),id:2},hand={...await point('[data-drive="handbrake"]'),id:3};
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[gas,right]});
+  await page.waitForFunction(()=>__costa.vehicle.speed>2&&__costa.vehicle.yaw>.1,{},{timeout:15000});
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[gas,right,hand]});
+  const moving=await page.evaluate(()=>({input:__costa.input.read(),x:__costa.vehicle.x,z:__costa.vehicle.z,speed:__costa.vehicle.speed,yaw:__costa.vehicle.yaw}));
+  assert.equal(moving.input.throttle,true);assert.equal(moving.input.steer,1);assert.equal(moving.input.handbrake,true);
+  assert.ok(moving.speed>1);assert.ok(moving.yaw>0.1);
+  reports.push({test:'Three simultaneous real touch contacts',...moving});
+  console.log('PASS: simultaneous touch and driving');
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[gas,hand]});
+  await page.waitForFunction(()=>!__costa.input.read().throttle&&!__costa.input.read().handbrake,{},{timeout:3000});
+  const released=await page.evaluate(()=>__costa.input.read());assert.equal(released.throttle,false);assert.equal(released.handbrake,false);assert.equal(released.steer,1);
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
+  assert.deepEqual(await page.evaluate(()=>__costa.input.read()),{steer:0,throttle:false,brake:false,handbrake:false});
+  reports.push({test:'Independent releases and touch cancellation',pass:true});
+  console.log('PASS: touch releases and cancellation');
+  await page.locator('#reset').tap();
+  const brake={...await point('[data-drive="brake"]'),id:4};
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[brake]});await page.waitForFunction(()=>__costa.vehicle.longitudinal<-1,{},{timeout:15000});
+  const reverse=await page.evaluate(()=>({gear:__costa.vehicle.gear,longitudinal:__costa.vehicle.longitudinal}));assert.equal(reverse.gear,'R');assert.ok(reverse.longitudinal<-1);
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});reports.push({test:'Touch brake becomes reverse at rest',...reverse});
+  console.log('PASS: reverse');
+  await page.locator('#camera').tap();assert.equal(await page.evaluate(()=>__costa.state.cameraMode),1);
+  await page.waitForTimeout(100);assert.ok(await page.evaluate(()=>__costa.camera.position.y>=1.15));
+  await page.locator('#camera').tap();assert.equal(await page.evaluate(()=>__costa.state.cameraMode),2);await page.locator('#camera').tap();
+  await page.locator('#pause').tap();const stopped=await page.evaluate(()=>({x:__costa.vehicle.x,z:__costa.vehicle.z}));
+  await page.waitForTimeout(400);assert.deepEqual(await page.evaluate(()=>({x:__costa.vehicle.x,z:__costa.vehicle.z})),stopped);assert.equal(await page.evaluate(()=>__costa.state.playing),false);
+  await page.screenshot({path:'test-results/challenges.png'});
+  console.log('PASS: cameras and pause');
+  await page.locator('[data-mode="circuit"]').tap();assert.equal(await page.evaluate(()=>__costa.challenges.mode),'circuit');assert.equal(await page.evaluate(()=>__costa.challenges.gates.length),12);
+  console.log('Circuit started:',await page.evaluate(()=>({state:__costa.state,countdown:__costa.challenges.countdown})));
+  await page.waitForFunction(()=>__costa.challenges.countdown===0,{},{timeout:20000});
+  await page.screenshot({path:'test-results/circuit.png'});
+  const car=await page.evaluate(()=>({x:__costa.car.root.position.x,z:__costa.car.root.position.z,cameraDistance:__costa.camera.position.distanceTo(__costa.car.root.position),drawCalls:__costa.renderer.info.render.calls,triangles:__costa.renderer.info.render.triangles}));
+  assert.ok(car.cameraDistance<25&&car.cameraDistance>3);reports.push({test:'Camera modes, pause and circuit countdown',...car});
+  await page.locator('#pause').tap();await page.locator('[data-mode="free"]').tap();await page.locator('#reset').tap();
+  await page.evaluate(()=>__costa.vehicle.reset(124,-110,0));await page.waitForTimeout(100);
+  await page.screenshot({path:'test-results/game.png'});
+  await page.setViewportSize({width:820,height:1180});await page.waitForTimeout(250);await page.screenshot({path:'test-results/portrait.png'});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  for(const selector of ['left','right','throttle','brake','handbrake']) {
+    const b=await page.locator(`[data-drive="${selector}"]`).boundingBox();assert.ok(b.width>=70&&b.height>=40);assert.ok(b.x>=0&&b.x+b.width<=820&&b.y+b.height<=1180);
+  }
+  reports.push({test:'Portrait touch layout stays inside viewport',pass:true});
+  await page.setViewportSize({width:667,height:375});await page.waitForTimeout(250);await page.screenshot({path:'test-results/small-landscape.png'});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  await page.locator('#sound').tap();assert.equal(await page.locator('#sound').getAttribute('aria-label'),'Desactivar sonido');await page.locator('#sound').tap();
+  reports.push({test:'Web Audio toggle from touch gesture',pass:true});
+  assert.deepEqual(errors,[]);assert.deepEqual(network,[]);
+  reports.push({test:'Autonomous HTML: zero network dependencies and zero JavaScript errors',pass:true});
+  await writeFile('test-results/browser-report.json',JSON.stringify(reports,null,2));console.log(JSON.stringify(reports,null,2));
+} catch(error) {
+  console.log('FAILED:',error.message,await page.evaluate(()=>window.__costa?{state:__costa.state,countdown:__costa.challenges.countdown}:null).catch(()=>null));
+  await writeFile('test-results/browser-partial.json',JSON.stringify(reports,null,2));
+  throw error;
+} finally {await browser.close();}
