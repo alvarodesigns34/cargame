@@ -63,6 +63,11 @@ try {
   for(const selector of ['left','right','throttle','brake','handbrake']) {
     const b=await page.locator(`[data-drive="${selector}"]`).boundingBox();assert.ok(b.width>=70&&b.height>=40);assert.ok(b.x>=0&&b.x+b.width<=820&&b.y+b.height<=1180);
   }
+  const actionsUncovered=await page.evaluate(()=>['quality','sound','camera','reset','pause'].every(id=>{
+    const button=document.getElementById(id),r=button.getBoundingClientRect();
+    return button.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));
+  }));
+  assert.ok(actionsUncovered,'Portrait objective must not cover header buttons');
   reports.push({test:'Portrait touch layout stays inside viewport',pass:true});
   await page.setViewportSize({width:667,height:375});await page.waitForTimeout(250);await page.screenshot({path:'test-results/small-landscape.png'});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
